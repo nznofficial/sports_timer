@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Sport variables ─────────────────────────────────────────── */
+:root {
+  --accent:       #FF3B2F;
+  --accent-glow:  rgba(255,59,47,0.55);
+  --accent-faint: rgba(255,59,47,0.07);
+  --on-accent:    #ffffff;
+  --bg:           #07080F;
+  --text:         #F0F2FF;
+  --text-muted:   rgba(180,185,220,0.42);
+  --border:       rgba(255,255,255,0.08);
+  --t:            0.5s cubic-bezier(0.4,0,0.2,1);
+}
+body[data-sport="basketball"] {
+  --accent:       #FF3B2F;
+  --accent-glow:  rgba(255,59,47,0.55);
+  --accent-faint: rgba(255,59,47,0.07);
+  --on-accent:    #ffffff;
+  --bg:           #07080F;
+  --text:         #F0F2FF;
+  --text-muted:   rgba(180,185,220,0.42);
+}
+body[data-sport="baseball"] {
+  --accent:       #FF6B1A;
+  --accent-glow:  rgba(255,107,26,0.5);
+  --accent-faint: rgba(255,107,26,0.07);
+  --on-accent:    #ffffff;
+  --bg:           #060B09;
+  --text:         #F6EFE4;
+  --text-muted:   rgba(205,185,158,0.42);
+}
+body[data-sport="skate"] {
+  --accent:       #CFFF00;
+  --accent-glow:  rgba(207,255,0,0.45);
+  --accent-faint: rgba(207,255,0,0.06);
+  --on-accent:    #0D1100;
+  --bg:           #050505;
+  --text:         #EEFFCC;
+  --text-muted:   rgba(178,210,100,0.42);
+}
+
+/* ─── Base ────────────────────────────────────────────────────── */
+html, body { height: 100%; }
+
+body {
+  font-family: 'Barlow Condensed', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background var(--t), color var(--t);
+}
+
+/* Background glow — sport-specific, top-left emanating */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 65% 42% at 10% 0%, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0.3;
+  transition: background var(--t);
+}
+
+/* Noise grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+}
+
+/* ─── App layout ──────────────────────────────────────────────── */
+.app {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2.5rem;
+}
+
+/* ─── Sport header ────────────────────────────────────────────── */
+.sport-header {
+  display: flex;
+  position: relative;
+  padding-top: 1.5rem;
+  margin-bottom: 0;
+}
+
+/* full-width bottom border */
+.sport-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -1.5rem;
+  right: -1.5rem;
+  height: 1px;
+  background: var(--border);
+}
+
+.sport-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0.7rem 0.5rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+/* underline indicator */
+.sport-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: 70%;
+  height: 2.5px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  transform: scaleX(0);
+  transition: transform 0.28s cubic-bezier(0.34,1.4,0.64,1), background var(--t);
+}
+
+.sport-tab.active { color: var(--text); }
+.sport-tab.active::after { transform: scaleX(1); }
+
+.tab-icon {
+  font-size: 1.85rem;
+  line-height: 1;
+  transition: transform 0.28s cubic-bezier(0.34,1.4,0.64,1);
+  filter: grayscale(0.5) opacity(0.7);
+}
+.sport-tab.active .tab-icon {
+  transform: scale(1.18) translateY(-2px);
+  filter: none;
+}
+
+.tab-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ─── Display zone ────────────────────────────────────────────── */
+.display-zone {
+  padding: 2rem 0 1.5rem;
+}
+
+.display-mode-label {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.75;
+  margin-bottom: 0.9rem;
+  transition: color var(--t);
+}
+
+/* The panel housing ghost + live digits */
+.display-panel {
+  position: relative;
+  width: 100%;
+  text-align: center;
+  padding: 1.25rem 0 1.5rem;
+}
+
+/* Top accent strip (like LED edge of scoreboard) */
+.display-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  width: 84%;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.6;
+  border-radius: 0 0 2px 2px;
+  transition: background var(--t);
+}
+
+/* Horizontal scan-line texture */
+.display-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.06) 3px,
+    rgba(0,0,0,0.06) 4px
+  );
+  border-radius: 8px;
+}
+
+/* Shared typography for both digit layers */
+.ghost-digits,
+.live-digits {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(4.5rem, 19vw, 10.5rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Ghost layer — faint "all segments lit" impression */
+.ghost-digits {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  opacity: 0.07;
+  user-select: none;
+  pointer-events: none;
+  z-index: 1;
+  transition: color var(--t);
+}
+
+/* Live layer */
+.live-digits {
+  position: relative;
+  z-index: 2;
+  color: var(--text);
+  text-shadow:
+    0 0 45px var(--accent-glow),
+    0 0 90px var(--accent-glow);
+  transition: text-shadow var(--t);
+}
+
+.live-digits .sep {
+  color: var(--accent);
+  transition: color var(--t);
+  opacity: 0.85;
+}
+
+.live-digits .csep {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.live-digits .cs {
+  font-size: 0.42em;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* Progress bar (countdown mode) */
+.progress-wrap {
+  margin-top: 1.25rem;
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform-origin: left;
+  transition: background var(--t), box-shadow var(--t);
+}
+
+/* ─── Controls section ────────────────────────────────────────── */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* Mode toggle */
+.mode-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.mode-btn {
+  padding: 0.5rem 1.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.mode-btn + .mode-btn { border-left: 1px solid var(--border); }
+.mode-btn.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  transition: background var(--t), color var(--t);
+}
+
+/* Countdown: time inputs */
+.time-inputs {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.time-input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-input-group label {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.time-input {
+  width: 72px;
+  padding: 0.55rem 0.25rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.time-input::-webkit-outer-spin-button,
+.time-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.time-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-faint);
+}
+.time-input:disabled { opacity: 0.35; }
+
+.input-sep {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.1rem;
+  color: var(--accent);
+  opacity: 0.45;
+  line-height: 1;
+  padding-bottom: 0.55rem;
+  transition: color var(--t);
+}
+
+/* Presets */
+.presets {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.preset {
+  padding: 0.3rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.preset:hover {
+  background: var(--accent-faint);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Action buttons */
+.action-btns {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.75rem;
+}
+
+.btn-main {
+  padding: 0.9rem 2.5rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 5px;
+  color: var(--on-accent);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 4px 24px -4px var(--accent-glow);
+  transition: all 0.18s cubic-bezier(0.34,1.2,0.64,1), background var(--t), color var(--t), box-shadow var(--t);
+  min-width: 140px;
+}
+.btn-main:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -4px var(--accent-glow);
+}
+.btn-main:active { transform: scale(0.96); filter: none; }
+
+.btn-sub {
+  padding: 0.8rem 1.4rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.45rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.16s;
+}
+.btn-sub:hover:not(:disabled) {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.btn-sub:active:not(:disabled) { transform: scale(0.96); }
+.btn-sub:disabled { opacity: 0.22; cursor: not-allowed; }
+
+/* ─── Lap section ─────────────────────────────────────────────── */
+.lap-section { width: 100%; }
+
+.lap-header {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 1fr;
+  padding: 0.4rem 0.75rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.lap-list {
+  max-height: 185px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.lap-item {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 1fr;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: fadeSlideIn 0.2s ease;
+  color: var(--text);
+  opacity: 0.8;
+}
+.lap-item:first-child {
+  color: var(--accent);
+  opacity: 1;
+  font-weight: 700;
+  transition: color var(--t);
+}
+.lap-num { color: var(--text-muted); font-weight: 400; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── Celebration overlay ─────────────────────────────────────── */
+.celebration {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.celebration.visible {
+  display: flex;
+  animation: celFadeIn 0.3s ease;
+}
+@keyframes celFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cel-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  animation: celPopIn 0.45s cubic-bezier(0.34,1.5,0.64,1);
+}
+@keyframes celPopIn {
+  from { transform: scale(0.65) translateY(24px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.cel-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(3.5rem, 16vw, 8rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 0 60px var(--accent-glow), 0 0 120px var(--accent-glow);
+  animation: titlePulse 1.2s ease-in-out infinite alternate;
+  transition: color var(--t), text-shadow var(--t);
+}
+@keyframes titlePulse {
+  from { text-shadow: 0 0 40px var(--accent-glow); }
+  to   { text-shadow: 0 0 90px var(--accent-glow), 0 0 150px var(--accent-glow); }
+}
+
+.cel-sub {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+
+.cel-dismiss {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-top: 2rem;
+  animation: blinkFade 2s ease-in-out 1.5s infinite;
+}
+@keyframes blinkFade {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.65; }
+}
+
+.emoji-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.emoji-row span { display: inline-block; font-size: 2.5rem; }
+
+/* ── Basketball animations ── */
+.cel-basketball .b-ball { animation: bball-bounce 0.55s ease-in-out infinite alternate; transform-origin: bottom center; }
+.cel-basketball .b-ball:nth-child(1) { animation-delay: 0s; }
+.cel-basketball .b-ball:nth-child(2) { animation-delay: 0.09s; }
+.cel-basketball .b-ball:nth-child(3) { animation-delay: 0.18s; }
+.cel-basketball .b-ball:nth-child(4) { animation-delay: 0.27s; }
+.cel-basketball .b-ball:nth-child(5) { animation-delay: 0.36s; }
+.cel-basketball .b-ball:nth-child(6) { animation-delay: 0.18s; }
+.cel-basketball .b-ball:nth-child(7) { animation-delay: 0.09s; }
+@keyframes bball-bounce {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); }
+  40%  { transform: translateY(-18px) rotate(90deg) scale(1.1); }
+  100% { transform: translateY(-32px) rotate(200deg) scale(1.15); }
+}
+
+/* ── Baseball animations ── */
+.cel-baseball .b-beaver { animation: beaver-wave 0.65s ease-in-out infinite alternate; transform-origin: bottom center; }
+.cel-baseball .b-beaver:nth-child(1) { animation-delay: 0s; }
+.cel-baseball .b-beaver:nth-child(2) { animation-delay: 0.13s; }
+.cel-baseball .b-beaver:nth-child(3) { animation-delay: 0.26s; }
+.cel-baseball .b-beaver:nth-child(4) { animation-delay: 0.39s; }
+.cel-baseball .b-beaver:nth-child(5) { animation-delay: 0.52s; }
+.cel-baseball .b-beaver:nth-child(6) { animation-delay: 0.39s; }
+.cel-baseball .b-beaver:nth-child(7) { animation-delay: 0.26s; }
+@keyframes beaver-wave {
+  0%   { transform: rotate(-18deg) translateY(0) scale(1); }
+  50%  { transform: rotate(0deg) translateY(-16px) scale(1.1); }
+  100% { transform: rotate(18deg) translateY(-6px) scale(1.05); }
+}
+.cel-baseball .b-ball { animation: baseball-spin 0.8s linear infinite; font-size: 1.8rem !important; }
+@keyframes baseball-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Skate animations ── */
+.cel-skate .s-board { animation: kickflip 0.9s ease-in-out infinite; transform-origin: center; }
+.cel-skate .s-board:nth-child(2) { animation-delay: 0.18s; }
+.cel-skate .s-board:nth-child(3) { animation-delay: 0.36s; }
+.cel-skate .s-board:nth-child(4) { animation-delay: 0.54s; }
+.cel-skate .s-board:nth-child(5) { animation-delay: 0.72s; }
+@keyframes kickflip {
+  0%   { transform: translateY(0) rotateX(0deg); }
+  30%  { transform: translateY(-20px) rotateX(180deg); }
+  60%  { transform: translateY(-28px) rotateX(360deg); }
+  80%  { transform: translateY(-10px) rotateX(360deg); }
+  100% { transform: translateY(0) rotateX(360deg); }
+}
+.cel-skate .s-bolt { animation: bolt-flash 0.7s ease-in-out infinite alternate; font-size: 2.2rem !important; }
+.cel-skate .s-bolt:nth-child(1) { animation-delay: 0s; }
+.cel-skate .s-bolt:nth-child(7) { animation-delay: 0.23s; }
+.cel-skate .s-bolt:nth-child(8) { animation-delay: 0.46s; }
+@keyframes bolt-flash {
+  0%   { transform: scale(0.8) translateY(4px); opacity: 0.3; }
+  100% { transform: scale(1.3) translateY(-4px); opacity: 1; }
+}
+
+/* ── Flash effect ── */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: white;
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0;
+}
+.flash-overlay.flash { animation: flashPop 0.6s ease forwards; }
+@keyframes flashPop {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+/* ── Util ── */
+.hidden { display: none !important; }
+
+</style>
+</head>
+<body data-sport="basketball">
+
+<div class="flash-overlay" id="flash-overlay"></div>
+
+<div class="app" id="app">
+
+  <!-- Sport tabs -->
+  <header class="sport-header">
+    <button class="sport-tab active" id="sport-basketball" onclick="setSport('basketball')">
+      <span class="tab-icon">🏀</span>
+      <span class="tab-label">Basketball</span>
+    </button>
+    <button class="sport-tab" id="sport-baseball" onclick="setSport('baseball')">
+      <span class="tab-icon">⚾</span>
+      <span class="tab-label">Baseball</span>
+    </button>
+    <button class="sport-tab" id="sport-skate" onclick="setSport('skate')">
+      <span class="tab-icon">🛹</span>
+      <span class="tab-label">Skate</span>
+    </button>
+  </header>
+
+  <!-- Display zone -->
+  <div class="display-zone">
+    <div class="display-mode-label" id="display-mode-label">Countdown</div>
+
+    <div class="display-panel">
+      <div class="ghost-digits" id="ghost-digits" aria-hidden="true">88:88:88</div>
+      <div class="live-digits" id="main-display">
+        <span class="d-h">00</span><span class="sep">:</span><span class="d-m">05</span><span class="sep">:</span><span class="d-s">00</span>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-section">
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="tab-countdown" onclick="switchMode('countdown')">Countdown</button>
+      <button class="mode-btn" id="tab-stopwatch" onclick="switchMode('stopwatch')">Stopwatch</button>
+    </div>
+
+    <!-- Countdown UI -->
+    <div id="mode-countdown-ui">
+      <div class="time-inputs">
+        <div class="time-input-group">
+          <label>hrs</label>
+          <input class="time-input" id="inp-h" type="number" min="0" max="99" value="0" placeholder="00">
+        </div>
+        <span class="input-sep">:</span>
+        <div class="time-input-group">
+          <label>min</label>
+          <input class="time-input" id="inp-m" type="number" min="0" max="59" value="5" placeholder="00">
+        </div>
+        <span class="input-sep">:</span>
+        <div class="time-input-group">
+          <label>sec</label>
+          <input class="time-input" id="inp-s" type="number" min="0" max="59" value="0" placeholder="00">
+        </div>
+      </div>
+
+      <div class="presets">
+        <button class="preset" onclick="setPreset(0,30)">30s</button>
+        <button class="preset" onclick="setPreset(1,0)">1 min</button>
+        <button class="preset" onclick="setPreset(5,0)">5 min</button>
+        <button class="preset" onclick="setPreset(10,0)">10 min</button>
+        <button class="preset" onclick="setPreset(25,0)">25 min</button>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-btns">
+      <button class="btn-main" id="btn-start" onclick="primaryToggle()">START</button>
+      <button class="btn-sub hidden" id="btn-lap" onclick="swLap()" disabled>LAP</button>
+      <button class="btn-sub" id="btn-reset" onclick="primaryReset()">RESET</button>
+    </div>
+
+  </div>
+
+  <!-- Lap list -->
+  <div class="lap-section" id="lap-section" style="display:none">
+    <div class="lap-header"><span>#</span><span>Split</span><span>Total</span></div>
+    <div class="lap-list" id="lap-list"></div>
+  </div>
+
+</div>
+
+<!-- Celebration overlay -->
+<div class="celebration" id="celebration" onclick="dismissCelebration()">
+  <div class="cel-inner">
+
+    <div class="cel-basketball hidden">
+      <div class="cel-title">BOOMSHAKALAKA!</div>
+    </div>
+
+    <div class="cel-baseball hidden">
+      <div class="cel-title">GO BEAVS!!!</div>
+    </div>
+
+    <div class="cel-skate hidden">
+      <div class="cel-title">BOLTS!!!</div>
+    </div>
+
+    <div class="cel-dismiss">Tap anywhere to dismiss</div>
+  </div>
+</div>
+
+<script>
+// ── Utilities ──────────────────────────────────────────────────────
+
+function pad(n) { return String(Math.floor(n)).padStart(2, '0'); }
+
+const SEP = '<span class="sep">:</span>';
+
+function fmtHMS(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${pad(s/3600)}${SEP}${pad((s%3600)/60)}${SEP}${pad(s%60)}`;
+}
+
+function fmtCountdown(ms) {
+  const s = Math.ceil(ms / 1000);
+  return `${pad(s/3600)}${SEP}${pad((s%3600)/60)}${SEP}${pad(s%60)}`;
+}
+
+function fmtStopwatch(ms) {
+  const cs = Math.floor((ms % 1000) / 10);
+  return `${fmtHMS(ms)}<span class="csep">.</span><span class="cs">${pad(cs)}</span>`;
+}
+
+function playSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (currentSport === 'basketball') playBuzzer(ctx);
+    else if (currentSport === 'baseball') playOrgan(ctx);
+    else playSynth(ctx);
+  } catch(_) {}
+}
+
+function playBuzzer(ctx) {
+  // Quick ascending run → held final note (NBA Jam energy)
+  const run = [
+    { freq: 392, t: 0,    dur: 0.09 },
+    { freq: 440, t: 0.10, dur: 0.09 },
+    { freq: 494, t: 0.20, dur: 0.09 },
+    { freq: 587, t: 0.30, dur: 0.09 },
+  ];
+  run.forEach(({ freq, t, dur }) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const ts = ctx.currentTime + t;
+    gain.gain.setValueAtTime(0.25, ts);
+    gain.gain.exponentialRampToValueAtTime(0.001, ts + dur);
+    osc.start(ts); osc.stop(ts + dur + 0.05);
+  });
+}
+
+function playOrgan(ctx) {
+  // Stadium organ "charge" fanfare — G4 C5 E5 G5 C6
+  const notes   = [392, 523, 659, 784, 1047];
+  const timings = [0, 0.13, 0.26, 0.39, 0.55];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + timings[i];
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  });
+}
+
+function playSynth(ctx) {
+  // Rising synth sweeps — two quick electronic hits
+  [0, 0.22].forEach(delay => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(80, ctx.currentTime + delay);
+    osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + delay + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.18);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + 0.2);
+  });
+}
+
+function triggerFlash() {
+  const el = document.getElementById('flash-overlay');
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+// ── Current mode ───────────────────────────────────────────────────
+
+let currentMode = 'countdown';
+let currentSport = 'basketball';
+
+// ── Sport selector ─────────────────────────────────────────────────
+
+function setSport(sport) {
+  currentSport = sport;
+  document.body.dataset.sport = sport;
+  ['basketball', 'baseball', 'skate'].forEach(s => {
+    document.getElementById(`sport-${s}`).classList.toggle('active', s === sport);
+  });
+  primaryReset();
+  dismissCelebration();
+}
+
+// ── Celebration ────────────────────────────────────────────────────
+
+function showCelebration() {
+  triggerFlash();
+  const zone = document.getElementById('celebration');
+  // hide all sport content
+  ['basketball','baseball','skate'].forEach(s => {
+    zone.querySelector(`.cel-${s}`).classList.add('hidden');
+  });
+  // show current sport
+  zone.querySelector(`.cel-${currentSport}`).classList.remove('hidden');
+
+  zone.classList.remove('visible');
+  void zone.offsetWidth;
+  zone.classList.add('visible');
+}
+
+function dismissCelebration() {
+  document.getElementById('celebration').classList.remove('visible');
+}
+
+// ── Mode switching ─────────────────────────────────────────────────
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-countdown-ui').classList.toggle('hidden', mode !== 'countdown');
+  document.getElementById('btn-lap').classList.toggle('hidden', mode !== 'stopwatch');
+  document.getElementById('progress-wrap').style.display = mode === 'countdown' ? '' : 'none';
+  document.getElementById('tab-countdown').classList.toggle('active', mode === 'countdown');
+  document.getElementById('tab-stopwatch').classList.toggle('active', mode === 'stopwatch');
+  document.getElementById('display-mode-label').textContent = mode === 'countdown' ? 'Countdown' : 'Stopwatch';
+
+  // Update ghost digits
+  document.getElementById('ghost-digits').textContent =
+    mode === 'stopwatch' ? '88:88:88.88' : '88:88:88';
+
+  primaryReset();
+  dismissCelebration();
+}
+
+// ── Unified button delegates ────────────────────────────────────────
+
+function primaryToggle() {
+  if (currentMode === 'countdown') cdToggle();
+  else swToggle();
+}
+
+function primaryReset() {
+  if (currentMode === 'countdown') cdReset();
+  else swReset();
+}
+
+// ── Countdown ──────────────────────────────────────────────────────
+
+let cdInterval = null;
+let cdRemaining = 0;
+let cdTotal = 0;
+let cdEnd = null;
+let cdRunning = false;
+
+function cdGetInputMs() {
+  const h = parseInt(document.getElementById('inp-h').value) || 0;
+  const m = parseInt(document.getElementById('inp-m').value) || 0;
+  const s = parseInt(document.getElementById('inp-s').value) || 0;
+  return (h*3600 + m*60 + s) * 1000;
+}
+
+function cdUpdateDisplay(ms) {
+  document.getElementById('main-display').innerHTML = fmtCountdown(ms);
+  const pct = cdTotal > 0 ? ((cdTotal - ms) / cdTotal) * 100 : 0;
+  document.getElementById('progress-bar').style.width = `${Math.min(100, pct)}%`;
+}
+
+function cdSetInputsDisabled(disabled) {
+  ['inp-h','inp-m','inp-s'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+}
+
+function cdToggle() {
+  if (cdRunning) {
+    cdRemaining = cdEnd - Date.now();
+    clearInterval(cdInterval);
+    cdRunning = false;
+    document.getElementById('btn-start').textContent = 'RESUME';
+    cdSetInputsDisabled(false);
+  } else {
+    if (!cdRemaining) {
+      cdRemaining = cdGetInputMs();
+      if (cdRemaining <= 0) return;
+      cdTotal = cdRemaining;
+    }
+    dismissCelebration();
+    cdEnd = Date.now() + cdRemaining;
+    cdRunning = true;
+    document.getElementById('btn-start').textContent = 'PAUSE';
+    cdSetInputsDisabled(true);
+
+    cdInterval = setInterval(() => {
+      const left = cdEnd - Date.now();
+      if (left <= 0) {
+        clearInterval(cdInterval);
+        cdRunning = false;
+        cdRemaining = 0;
+        cdUpdateDisplay(0);
+        document.getElementById('btn-start').textContent = 'START';
+        cdSetInputsDisabled(false);
+        playSound();
+        showCelebration();
+      } else {
+        cdUpdateDisplay(left);
+      }
+    }, 100);
+  }
+}
+
+function cdReset() {
+  clearInterval(cdInterval);
+  cdRunning = false; cdRemaining = 0; cdEnd = null; cdTotal = 0;
+  document.getElementById('btn-start').textContent = 'START';
+  cdSetInputsDisabled(false);
+  cdUpdateDisplay(cdGetInputMs());
+  document.getElementById('progress-bar').style.width = '0%';
+  dismissCelebration();
+}
+
+function setPreset(minutes, seconds) {
+  cdReset();
+  document.getElementById('inp-h').value = 0;
+  document.getElementById('inp-m').value = minutes;
+  document.getElementById('inp-s').value = seconds;
+  cdTotal = 0;
+  cdUpdateDisplay(cdGetInputMs());
+}
+
+['inp-h','inp-m','inp-s'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (!cdRunning) { cdTotal = 0; cdUpdateDisplay(cdGetInputMs()); }
+  });
+});
+
+// ── Stopwatch ──────────────────────────────────────────────────────
+
+let swInterval = null;
+let swRunning = false;
+let swStart = null;
+let swAccum = 0;
+let swLaps = [];
+let swLastLap = 0;
+
+function swElapsed() {
+  return swAccum + (swRunning ? Date.now() - swStart : 0);
+}
+
+function swToggle() {
+  if (swRunning) {
+    swAccum = swElapsed();
+    clearInterval(swInterval);
+    swRunning = false;
+    document.getElementById('btn-start').textContent = 'RESUME';
+    document.getElementById('btn-lap').disabled = true;
+  } else {
+    swStart = Date.now();
+    swRunning = true;
+    document.getElementById('btn-start').textContent = 'PAUSE';
+    document.getElementById('btn-lap').disabled = false;
+    swInterval = setInterval(() => {
+      document.getElementById('main-display').innerHTML = fmtStopwatch(swElapsed());
+    }, 50);
+  }
+}
+
+function swLap() {
+  if (!swRunning) return;
+  const total = swElapsed();
+  const split = total - swLastLap;
+  swLaps.unshift({ total, split });
+  swLastLap = total;
+  renderLaps();
+  document.getElementById('lap-section').style.display = 'block';
+}
+
+function swReset() {
+  clearInterval(swInterval);
+  swRunning = false; swStart = null; swAccum = 0; swLaps = []; swLastLap = 0;
+  document.getElementById('main-display').innerHTML =
+    `00<span class="sep">:</span>00<span class="sep">:</span>00<span class="csep">.</span><span class="cs">00</span>`;
+  document.getElementById('btn-start').textContent = 'START';
+  document.getElementById('btn-lap').disabled = true;
+  document.getElementById('lap-section').style.display = 'none';
+  document.getElementById('lap-list').innerHTML = '';
+}
+
+function renderLaps() {
+  const list = document.getElementById('lap-list');
+  list.innerHTML = swLaps.map((lap, i) => {
+    const num = swLaps.length - i;
+    const splitStr = fmtStopwatch(lap.split).replace(/<[^>]+>/g, '.');
+    const totalStr = fmtStopwatch(lap.total).replace(/<[^>]+>/g, '.');
+    return `<div class="lap-item">
+      <span class="lap-num">#${pad(num)}</span>
+      <span>${splitStr}</span>
+      <span>${totalStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+cdUpdateDisplay(cdGetInputMs());
+</script>
+</body>
+</html>
